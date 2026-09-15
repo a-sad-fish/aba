@@ -24,7 +24,7 @@ START_OF_A = -35 - 45/2
 NODE_SPACING = 1.5
 END_OF_C = 35 + 45/2
 BEAM_LENGTH = (END_OF_C-START_OF_A)
-RADIUS = 4
+RADIUS = 6
 DENSITY = 650
 
 # size ratio percentage of one of the outer members (double shear) 
@@ -392,6 +392,18 @@ def spring_calc_0(l, rho, u, a = 3):
     return f_h_0 * l * RADIUS * 2
 
 
+def spring_calc_90(l, rho, u, a = 3):
+    # l = supporting length
+    # d = diameter
+    # rho = density
+    # u = displacement
+    # richard abbot curves
+    #EC5 = 0.082 * (1 - 0.01 * RADIUS * 2) * rho
+    f_h_inter = 0.1108 * rho - 28.47
+    k_f_el_0 = 0.0922 * rho - 18.2
+    k_f_pl_0 = 0.0047 * rho - 2
+    f_h_0 = (k_f_el_0 - k_f_pl_0) * u / ((1 + ((k_f_el_0 - k_f_pl_0) * u / f_h_inter) ** a) ** (1 / a)) + k_f_pl_0 * u
+    return f_h_0 * l * RADIUS * 2
 
 
 def apply_nodal_force(
