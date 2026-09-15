@@ -17,21 +17,22 @@ from connectorBehavior import ConnectorElasticity
 import numpy as np
 
 
-
+BEAM_SMALL_LENGTH = 35 #mm
+BEAM_LARGE_LENGTH = 20 #mm 45
+NODE_SPACING = 2
 
 # Node Size
-START_OF_A = -35 - 45/2
-NODE_SPACING = 1.5
-END_OF_C = 35 + 45/2
+START_OF_A = -BEAM_SMALL_LENGTH - BEAM_LARGE_LENGTH/2
+END_OF_C = BEAM_SMALL_LENGTH + BEAM_LARGE_LENGTH/2
 BEAM_LENGTH = (END_OF_C-START_OF_A)
-RADIUS = 6
+RADIUS = 4
 DENSITY = 650
 
 # size ratio percentage of one of the outer members (double shear) 
 number_of_nodes = round(BEAM_LENGTH/NODE_SPACING + 1)
 
 
-RATIO = 35/(35 + 45 + 35)
+RATIO = BEAM_SMALL_LENGTH/(BEAM_SMALL_LENGTH + BEAM_LARGE_LENGTH + BEAM_SMALL_LENGTH)
 BREAK_A = round(number_of_nodes*RATIO)
 BREAK_B = round(number_of_nodes*(1-RATIO))
 
@@ -400,9 +401,9 @@ def spring_calc_90(l, rho, u, a = 3):
     # richard abbot curves
     #EC5 = 0.082 * (1 - 0.01 * RADIUS * 2) * rho
     f_h_inter = 0.1108 * rho - 28.47
-    k_f_el_0 = 0.0922 * rho - 18.2
-    k_f_pl_0 = 0.0047 * rho - 2
-    f_h_0 = (k_f_el_0 - k_f_pl_0) * u / ((1 + ((k_f_el_0 - k_f_pl_0) * u / f_h_inter) ** a) ** (1 / a)) + k_f_pl_0 * u
+    k_f_el_90 = 0.0922 * rho - 18.2
+    k_f_pl_90 = 0.0084 * rho - 2.21
+    f_h_0 = (k_f_el_90 - k_f_pl_90) * u / ((1 + ((k_f_el_90 - k_f_pl_90) * u / f_h_inter) ** a) ** (1 / a)) + k_f_pl_90 * u
     return f_h_0 * l * RADIUS * 2
 
 
@@ -489,10 +490,15 @@ def make_deflection_curve():
     DEFLECTION_MIN = -20
     INC = 0.01
     vals = np.arange(DEFLECTION_MIN, DEFLECTION_MAX, INC)
-    standard_displacement_table = ()
+    displacement_table_0 = ()
     for i in vals:
-        standard_displacement_table = standard_displacement_table + ((np.sign(i)*spring_calc_0(NODE_SPACING, 650, abs(i)), i),)
-    return standard_displacement_table
+        displacement_table_0 = displacement_table_0 + ((np.sign(i)*spring_calc_0(NODE_SPACING, DENSITY, abs(i)), i),)
+
+    displacement_table_90 = ()
+    for i in vals:
+        displacement_table_90 = displacement_table_90 + ((np.sign(i)*spring_calc_0(NODE_SPACING, DENSITY, abs(i)), i),)
+
+    return (displacement_table_0, displacement_table_90)
 
 
 def main_double_shear():
@@ -516,8 +522,8 @@ def main_double_shear():
             instance_2='left_timber',
             vertex_2_index=number_of_nodes - 1,
 
-            force_displacement_table_1=standard_displacement_table,
-            force_displacement_table_2=standard_displacement_table
+            force_displacement_table_1=standard_displacement_table[0],
+            force_displacement_table_2=standard_displacement_table[1]
             )
     
     for i in range(BREAK_A, BREAK_B):
@@ -530,8 +536,8 @@ def main_double_shear():
             instance_2='centre_timber',
             vertex_2_index=0,
 
-            force_displacement_table_1=standard_displacement_table,
-            force_displacement_table_2=standard_displacement_table
+            force_displacement_table_1=standard_displacement_table[0],
+            force_displacement_table_2=standard_displacement_table[1]
             )
 
     for i in range(BREAK_B, number_of_nodes):
@@ -544,8 +550,8 @@ def main_double_shear():
             instance_2='right_timber',
             vertex_2_index=number_of_nodes - 1,
 
-            force_displacement_table_1=standard_displacement_table,
-            force_displacement_table_2=standard_displacement_table
+            force_displacement_table_1=standard_displacement_table[0],
+            force_displacement_table_2=standard_displacement_table[1]
             )
 
 
@@ -606,7 +612,6 @@ def main_double_shear():
 
     assembly.regenerate()
     model.rootAssembly.regenerate()
-    mdb.Job(name='Job-Check', model='Model-1', type=ANALYSIS).writeInput()
 
 
 def embedment_test():
@@ -618,13 +623,6 @@ def embedment_test():
 
 
     model.StaticStep(name='Step-1', previous='Initial')
-
-    standard_displacement_table = ()
-
-    vals = [-20, -10, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 10, 20]
-
-    for i in vals:
-        standard_displacement_table = standard_displacement_table + ((spring_calc_0(NODE_SPACING, 900, abs(i)), i),)
 
 
     for i in range(0, number_of_nodes):
@@ -688,7 +686,7 @@ def spring_test():
     vals = np.arange(DEFLECTION_MIN, DEFLECTION_MAX, INC)
     standard_displacement_table = ()
     for i in vals:
-        standard_displacement_table = standard_displacement_table + ((np.sign(i)*spring_calc_0(NODE_SPACING, 650, abs(i)), i),)
+        standard_displacement_table = standard_displacement_table + ((np.sign(i)*spring_calc_0(NODE_SPACING, DENSITY, abs(i)), i),)
     print(standard_displacement_table)
 
     # create_connector(
@@ -779,7 +777,6 @@ def spring_test():
 
 if __name__ == '__main__':
     main_double_shear()
-    #embedment_test()
     #spring_test()
 
 
