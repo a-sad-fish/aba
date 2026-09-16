@@ -14,19 +14,25 @@ from sketch import *
 from visualization import *
 from connectorBehavior import *
 from connectorBehavior import ConnectorElasticity
-import numpy as np
+import csv
 
+import numpy as np
+import os
+
+from odbAccess import openOdb
+
+# pip install git+https://github.com/lcharleux/abapy.git
 
 BEAM_SMALL_LENGTH = 35 #mm
-BEAM_LARGE_LENGTH = 20 #mm 45
-NODE_SPACING = 2
+BEAM_LARGE_LENGTH = 45 #mm 45
+NODE_SPACING = 5
 
 # Node Size
 START_OF_A = -BEAM_SMALL_LENGTH - BEAM_LARGE_LENGTH/2
 END_OF_C = BEAM_SMALL_LENGTH + BEAM_LARGE_LENGTH/2
 BEAM_LENGTH = (END_OF_C-START_OF_A)
 RADIUS = 4
-DENSITY = 650
+DENSITY = 470
 
 # size ratio percentage of one of the outer members (double shear) 
 number_of_nodes = round(BEAM_LENGTH/NODE_SPACING + 1)
@@ -79,7 +85,7 @@ def assign_properties():
         (200000, 0.000), 
         (28000, 0.005),
         (32000, 0.020),
-        (36000, 0.050), 
+        (36000, 0.050)
     ))
     model.CircularProfile(name='Profile-1', r=RADIUS)
     model.BeamSection(
@@ -481,14 +487,14 @@ def set_boundary_conditions():
 
 
 def set_step():
-    model.StaticStep(initialInc=0.0000001, maxInc=0.2, maxNumInc=1000000, 
+    model.StaticStep(initialInc=0.01, maxInc=0.5, maxNumInc=10000, 
     minInc=1e-11, name='Step-1', previous='Initial', nlgeom = OFF)
     #model['Model-1'].steps['Step-1'].setValues(nlgeom=ON)
 
 def make_deflection_curve():
     DEFLECTION_MAX = 20
     DEFLECTION_MIN = -20
-    INC = 0.01
+    INC = 0.1
     vals = np.arange(DEFLECTION_MIN, DEFLECTION_MAX, INC)
     displacement_table_0 = ()
     for i in vals:
@@ -600,77 +606,93 @@ def main_double_shear():
 
     assembly.regenerate()
 
+    model.parts['Part-1'].Set(edges=model.parts['Part-1'].edges[:], name='Set-2')
+    model.parts['Part-1'].assignBeamSectionOrientation(method=N1_COSINES, n1=(0.0, 0.0, -1.0), region=model.parts['Part-1'].sets['Set-2'])
+
     mdb.Job(atTime=None, contactPrint=OFF, description='', echoPrint=OFF, 
         explicitPrecision=SINGLE, getMemoryFromAnalysis=True, historyPrint=OFF, 
         memory=90, memoryUnits=PERCENTAGE, model='Model-1', modelPrint=OFF, name=
         'Job-1', nodalOutputPrecision=SINGLE, queue=None, resultsFormat=ODB, 
         scratch='', type=ANALYSIS, userSubroutine='', waitHours=0, waitMinutes=0)
 
-    model.parts['Part-1'].Set(edges=model.parts['Part-1'].edges[:], name='Set-2')
-    model.parts['Part-1'].assignBeamSectionOrientation(method=N1_COSINES, n1=(0.0, 0.0, -1.0), region=model.parts['Part-1'].sets['Set-2'])
+ 
+
+    model.HistoryOutputRequest(
+    name='H-Output-Reactions',
+    createStepName='Step-1',
+    region=assembly.sets['left_timber'],   # or whichever support set
+    variables=('RF1', 'RF2', 'RM3')
+    )
+
+    model.HistoryOutputRequest(
+    name='H-Output-Displacement',
+    createStepName='Step-1',
+    region=assembly.sets['centre_timber'],   # or whichever support set
+    variables=("U2",)
+    )
+
 
 
     assembly.regenerate()
     model.rootAssembly.regenerate()
 
 
-def embedment_test():
-    create_line_part()
-
-    assign_properties()
-
-    create_part_instances()
-
-
-    model.StaticStep(name='Step-1', previous='Initial')
-
-
-    for i in range(0, number_of_nodes):
-        create_connector(
-            name='Spring-' + str(i),
-
-            instance_1='centre_timber',
-            vertex_1_index=0,
-
-            instance_2='steel_dowel',
-            vertex_2_index=i,
-
-            force_displacement_table_1=standard_displacement_table,
-            force_displacement_table_2=standard_displacement_table
-            )
+    mdb.models['Model-1'].rootAssembly.Set(name='Set-30', vertices=
+        mdb.models['Model-1'].rootAssembly.instances['steel_dowel'].vertices.getSequenceFromMask(
+        ('[#1800 ]', ), ))
+    mdb.models['Model-1'].DisplacementBC(amplitude=UNSET, createStepName='Step-1', 
+        distributionType=UNIFORM, fieldName='', fixed=OFF, localCsys=None, name=
+        'BC-5', region=mdb.models['Model-1'].rootAssembly.sets['Set-30'], u1=UNSET, 
+        u2=15.0, ur3=UNSET)
+    mdb.jobs['Job-1'].submit(consistencyChecking=OFF)
+    mdb.jobs['Job-1'].waitForCompletion()
 
 
-    assembly.Set(name='Set-7', 
-                 vertices=assembly.instances['steel_dowel'].vertices.getSequenceFromMask(('[#3fff ]', ), ))
+    odb = openOdb('Job-1.odb')
+    try:
+        step = odb.steps['Step-1']
+
+        # History Region key is usually something like 'Node ASSEMBLY.<node label>'
+        # or for connectors, 'Element ASSEMBLY.<element label>'
+        for region_key in step.historyRegions.keys():
+            print(region_key)
+            #print("frog")
+
+        region = step.historyRegions['Node LEFT_TIMBER.' + str(str(number_of_nodes))]
+        #print(region.historyOutputs)
+        rf2_data = region.historyOutputs['RF2'].data   # list of (time, value) tuples
+
+        region = step.historyRegions['Node CENTRE_TIMBER.' + str(number_of_nodes)]
+        #print(region.historyOutputs)
+        u2_data = region.historyOutputs['U2'].data   # list of (time, value) tuples
+
+        print(rf2_data)
+        print(u2_data)
+        data = []
+        for x, y in zip(rf2_data, u2_data):
+            data.append({"rf2":x[1]*-2, "u2":y[1]})    
+    
+
+        with open("C:\\Users\\william\\aba_data\\test.csv", 'w', newline='') as csvfile:
+            fieldnames = ['u2', 'rf2']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(data)
+        # region = step.historyRegions['Node ASSEMBLY.116']   # example key, copy exact from above
+        # rf2_data = region.historyOutputs['RF2'].data   # list of (time, value) tuples
+
+        # for time, value in rf2_data:
+        #     print(time, value)
+    
+    finally:
+        odb.close()
 
 
-    # for i in range(0, number_of_nodes):
-    #     apply_nodal_force(
-    #         instance_name='steel_dowel',
-    #         set_name='Load-Set-'+str(i),
-    #         load_name='Load-'+str(i),
-
-    #         node_index = i,
-
-    #         force=-TOTAL_FORCE / number_of_nodes
-    #         )
-        
-    mesh_part()
-
-    set_boundary_conditions()
-
-    mdb.Job(atTime=None, contactPrint=OFF, description='', echoPrint=OFF, 
-        explicitPrecision=SINGLE, getMemoryFromAnalysis=True, historyPrint=OFF, 
-        memory=90, memoryUnits=PERCENTAGE, model='Model-1', modelPrint=OFF, name=
-        'Job-1', nodalOutputPrecision=SINGLE, queue=None, resultsFormat=ODB, 
-        scratch='', type=ANALYSIS, userSubroutine='', waitHours=0, waitMinutes=0)
-
-    model.parts['Part-1'].Set(edges=model.parts['Part-1'].edges[:], name='Set-2')
-    model.parts['Part-1'].assignBeamSectionOrientation(method=N1_COSINES, n1=(0.0, 0.0, -1.0), region=model.parts['Part-1'].sets['Set-2'])
 
 
 
 def spring_test():
+
     create_line_part()
 
     assign_properties()
@@ -682,7 +704,7 @@ def spring_test():
     
     DEFLECTION_MAX = 20
     DEFLECTION_MIN = -20
-    INC = 0.01
+    INC = 0.1
     vals = np.arange(DEFLECTION_MIN, DEFLECTION_MAX, INC)
     standard_displacement_table = ()
     for i in vals:
