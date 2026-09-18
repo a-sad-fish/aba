@@ -132,43 +132,6 @@ def create_part_instances():
     assembly.translate(instanceList=('centre_timber', ), vector=(0.0, distance, 0.0))
 
 
-
-
-"""
-model.ConnectorSection(name='ConnSect-26', rotationalType=EULER, translationalType=CARTESIAN)
-
-model.sections['ConnSect-26'].setValues(behaviorOptions=(ConnectorElasticity(behavior=NONLINEAR, coupling=COUPLED_POSITION, table=((
-    0.0, 0.0, 0.0, 0.0), (1.0, 1.0, 1.0, 1.0)), independentComponents=(1, 2, 4), components=(1, )), ConnectorElasticity(behavior=NONLINEAR, 
-    coupling=COUPLED_POSITION, table=((0.0, 0.0, 0.0, 0.0), (1.0, 1.0, 1.0, 1.0)), independentComponents=(1, 2, 4), components=(2, ))))
-
-model.sections['ConnSect-26'].behaviorOptions[0].ConnectorOptions()
-
-model.sections['ConnSect-26'].behaviorOptions[1].ConnectorOptions()
-
-model.rootAssembly.ReferencePoint(point=model.rootAssembly.instances['steel_dowel'].InterestingPoint(model.rootAssembly.instances['steel_dowel'].edges[9], MIDDLE))
-
-model.rootAssembly.features.changeKey(fromName='RP-1', toName='RP-1')
-
-model.rootAssembly.DatumCsysByThreePoints(coordSysType=CARTESIAN, isZ=True, origin=model.rootAssembly.instances['steel_dowel'].InterestingPoint(model.rootAssembly.instances['steel_dowel'].edges[9], MIDDLE), point1=model.rootAssembly.instances['centre_timber'].vertices[0])
-
-model.rootAssembly.WirePolyLine(mergeType=IMPRINT, meshable=False, points=((model.rootAssembly.referencePoints[88], model.rootAssembly.instances['centre_timber'].vertices[0]), ))
-
-model.rootAssembly.features.changeKey(fromName='Wire-25', toName='Wire-25')
-
-model.rootAssembly.Set(edges=model.rootAssembly.edges.getSequenceFromMask(('[#1 ]', ), ), name='Wire-25-Set-1')
-
-model.rootAssembly.SectionAssignment(region=model.rootAssembly.sets['Wire-25-Set-1'], sectionName='Spring-0-Section')
-
-model.rootAssembly.sectionAssignments[24].getSet()
-
-model.rootAssembly.ConnectorOrientation(
-    localCsys1=model.rootAssembly.datums[89], 
-    region=model.rootAssembly.allSets['Wire-25-Set-1']
-)
-
-    """
-
-
 def create_connector(
         name,
         instance_1,
@@ -180,7 +143,7 @@ def create_connector(
         # Connector type
         # ------------------------------------------------------
         translational_type=CARTESIAN,
-        rotational_type=EULER,
+        rotational_type=NONE,
 
         # ------------------------------------------------------
         # Elastic behaviour direction 1 (HORIZONTAL)
@@ -675,12 +638,12 @@ def main_double_shear():
     model.rootAssembly.regenerate()
 
 
-    model.rootAssembly.Set(name='Set-30', vertices=
-        model.rootAssembly.instances['steel_dowel'].vertices.getSequenceFromMask(
+    mdb.models['Model-1'].rootAssembly.Set(name='Set-30', vertices=
+        mdb.models['Model-1'].rootAssembly.instances['steel_dowel'].vertices.getSequenceFromMask(
         ('[#1800 ]', ), ))
-    # model.DisplacementBC(amplitude=UNSET, createStepName='Step-1', 
+    # mdb.models['Model-1'].DisplacementBC(amplitude=UNSET, createStepName='Step-1', 
     #     distributionType=UNIFORM, fieldName='', fixed=OFF, localCsys=None, name=
-    #     'BC-5', region=model.rootAssembly.sets['Set-30'], u1=UNSET, 
+    #     'BC-5', region=mdb.models['Model-1'].rootAssembly.sets['Set-30'], u1=UNSET, 
     #     u2=15.0, ur3=UNSET)
     mdb.jobs['Job-1'].submit(consistencyChecking=OFF)
     mdb.jobs['Job-1'].waitForCompletion()
@@ -803,19 +766,19 @@ def spring_test():
 
     # model.FieldOutputRequest(createStepName='Step-1', name=
     #     'F-Output-3', position=INTEGRATION_POINTS, rebar=EXCLUDE, region=
-    #     model.rootAssembly.sets['Spring-C-Set'], sectionPoints=
+    #     mdb.models['Model-1'].rootAssembly.sets['Spring-C-Set'], sectionPoints=
     #     DEFAULT, variables=('CTF', 'CEF', 'CU', 'CUE', 'CUP'))
 
     # model.rootAssembly.Set(edges=
-    #     model.rootAssembly.instances['left_timber'].edges.getSequenceFromMask(
+    #     mdb.models['Model-1'].rootAssembly.instances['left_timber'].edges.getSequenceFromMask(
     #     mask=('[#1 ]', ), )+\
-    #     model.rootAssembly.instances['right_timber'].edges.getSequenceFromMask(
+    #     mdb.models['Model-1'].rootAssembly.instances['right_timber'].edges.getSequenceFromMask(
     #     mask=('[#1 ]', ), ), name='Set-4', vertices=
-    #     model.rootAssembly.instances['left_timber'].vertices.getSequenceFromMask(
+    #     mdb.models['Model-1'].rootAssembly.instances['left_timber'].vertices.getSequenceFromMask(
     #     mask=('[#1 #4000000 ]', ), )+\
-    #     model.rootAssembly.instances['right_timber'].vertices.getSequenceFromMask(
+    #     mdb.models['Model-1'].rootAssembly.instances['right_timber'].vertices.getSequenceFromMask(
     #     mask=('[#1 #4000000 ]', ), )+\
-    #     model.rootAssembly.instances['centre_timber'].vertices.getSequenceFromMask(
+    #     mdb.models['Model-1'].rootAssembly.instances['centre_timber'].vertices.getSequenceFromMask(
     #     mask=('[#1 #4000000 ]', ), )
     # )
     # model.DisplacementBC(amplitude=UNSET, createStepName='Step-1', 
@@ -823,12 +786,12 @@ def spring_test():
     # 'BC-1', region=model.rootAssembly.sets['Set-4'], u1=0.0, 
     # u2=0.0, ur3=UNSET)
 
-    # model.rootAssembly.Set(name='Set-5', vertices=
-    #     model.rootAssembly.instances['steel_dowel'].vertices.getSequenceFromMask(
+    # mdb.models['Model-1'].rootAssembly.Set(name='Set-5', vertices=
+    #     mdb.models['Model-1'].rootAssembly.instances['steel_dowel'].vertices.getSequenceFromMask(
     #     ('[#0 #4000000 ]', ), ))
-    # model.DisplacementBC(amplitude=UNSET, createStepName='Step-1', 
+    # mdb.models['Model-1'].DisplacementBC(amplitude=UNSET, createStepName='Step-1', 
     #     distributionType=UNIFORM, fieldName='', fixed=OFF, localCsys=None, name=
-    #     'BC-2', region=model.rootAssembly.sets['Set-5'], u1=UNSET, 
+    #     'BC-2', region=mdb.models['Model-1'].rootAssembly.sets['Set-5'], u1=UNSET, 
     #     u2=1.0, ur3=UNSET)
 
 
