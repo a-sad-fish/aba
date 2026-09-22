@@ -724,22 +724,13 @@ def main_double_shear():
 
 def spring_test():
 
-    #create_line_part()
+    create_line_part()
 
-    #assign_properties()
+    assign_properties()
 
-    #create_part_instances()
+    create_part_instances()
 
     set_step()
-
-    model.Part(dimensionality=TWO_D_PLANAR, name='Part-2', type=DEFORMABLE_BODY)
-    model.parts['Part-2'].ReferencePoint(point=(0.0, 0.0, 0.0))
-
-    model.rootAssembly.Instance(dependent=ON, name='Part-2-1', part=model.parts['Part-2'])
-    mdb.models['Model-1'].rootAssembly.translate(instanceList=('Part-2-1', ), vector=(0.0, 2.0, 0.0))
-
-    model.rootAssembly.Instance(dependent=ON, name='Part-2-2', part=model.parts['Part-2'])
-    mdb.models['Model-1'].rootAssembly.translate(instanceList=('Part-2-2', ), vector=(0.0, 0, 0.0))
 
 
     # create_connector(
@@ -753,26 +744,31 @@ def spring_test():
 
     #     force_displacement_table=standard_displacement_table)
 
-    # create_connector(
-    #     name='Spring-C',
+    centre = round(number_of_nodes/2)
+    create_connector(
+        name='Spring-C',
 
-    #     instance_2='steel_dowel',
-    #     vertex_2_index=centre,
+        instance_2='steel_dowel',
+        vertex_2_index=centre,
 
-    #     instance_1='centre_timber',
-    #     vertex_1_index=0
-    #     )
+        instance_1='centre_timber',
+        vertex_1_index=0
+        )
 
-    # assembly.Set(name='Set-7', 
-    #              vertices=assembly.instances['steel_dowel'].vertices.getSequenceFromMask(('[#3fff ]', ), ))
+    assembly.Set(name='Set-7', 
+                 vertices=assembly.instances['steel_dowel'].vertices.getSequenceFromMask(('[#3fff ]', ), ))
 
         
-    # mesh_part()
+    mesh_part()
 
-    # set_boundary_conditions()
+    set_boundary_conditions()
 
 
     
+    model.FieldOutputRequest(createStepName='Step-1', name=
+        'F-Output-3', position=INTEGRATION_POINTS, rebar=EXCLUDE, region=
+        mdb.models['Model-1'].rootAssembly.sets['Spring-C-Set'], sectionPoints=
+        DEFAULT, variables=('CTF', 'CEF', 'CU', 'CUE', 'CUP'))
 
     mdb.Job(atTime=None, contactPrint=OFF, description='', echoPrint=OFF, 
         explicitPrecision=SINGLE, getMemoryFromAnalysis=True, historyPrint=OFF, 
@@ -780,44 +776,17 @@ def spring_test():
         'Job-1', nodalOutputPrecision=SINGLE, queue=None, resultsFormat=ODB, 
         scratch='', type=ANALYSIS, userSubroutine='', waitHours=0, waitMinutes=0)
 
-    # model.parts['Part-1'].Set(edges=model.parts['Part-1'].edges[:], name='Set-2')
-    # model.parts['Part-1'].assignBeamSectionOrientation(method=N1_COSINES, n1=(0.0, 0.0, -1.0), region=model.parts['Part-1'].sets['Set-2'])
+    model.parts['Part-1'].Set(edges=model.parts['Part-1'].edges[:], name='Set-2')
+    model.parts['Part-1'].assignBeamSectionOrientation(method=N1_COSINES, n1=(0.0, 0.0, -1.0), region=model.parts['Part-1'].sets['Set-2'])
 
 
     assembly.regenerate()
 
-    connector_elasticity_d2 = ConnectorElasticity(
-        behavior=NONLINEAR,
-        coupling=COUPLED_POSITION,
-        table=((0.0, 0.0, 0.0, 0.0), 
-               (1.0, 1.0, 0, 0),
-               (1.0, 0, 1.0, 0),
-               (1.0, 0, 0, 1.0),
-               ),
-        components=(2, ),
-        independentComponents=(1, 2, 6)
-    )
-
-
-    model.ConnectorSection(        
-        name="section_1",
-        translationalType=CARTESIAN,
-        rotationalType=ROTATION,
-        behaviorOptions=(connector_elasticity_d2,))
-    
-    model.rootAssembly.DatumCsysByThreePoints(coordSysType=
-        CARTESIAN, origin=model.rootAssembly.instances['Part-2-2'].referencePoints[1]
-        , point1=model.rootAssembly.instances['Part-2-1'].referencePoints[1])
-    
-    model.rootAssembly.WirePolyLine(mergeType=IMPRINT, meshable=False, 
-        points=((
-        model.rootAssembly.instances['Part-2-2'].referencePoints[1], 
-        model.rootAssembly.instances['Part-2-1'].referencePoints[1]), ))
-    model.rootAssembly.features.changeKey(fromName='Wire-1', toName='Wire-1')
-    model.rootAssembly.Set(edges=model.rootAssembly.edges.getSequenceFromMask(('[#1 ]', ), ), name='Wire-1-Set-1')
-    model.rootAssembly.SectionAssignment(region=model.rootAssembly.sets['Wire-1-Set-1'], sectionName='section_1')
-    model.rootAssembly.sectionAssignments[0].getSet()
-    model.rootAssembly.ConnectorOrientation(localCsys1=model.rootAssembly.datums[5], region=model.rootAssembly.allSets['Wire-1-Set-1'])
+    mdb.models['Model-1'].Part(dimensionality=TWO_D_PLANAR, name='Part-2', type=
+    DEFORMABLE_BODY)
+    mdb.models['Model-1'].parts['Part-2'].ReferencePoint(point=(0.0, 0.0, 0.0))
+    mdb.models['Model-1'].rootAssembly.Instance(dependent=ON, name='Part-2-1', 
+    part=mdb.models['Model-1'].parts['Part-2'])
 
 
 
